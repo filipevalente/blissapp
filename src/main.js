@@ -3,6 +3,9 @@
 import Vue from 'vue';
 import VueResource from 'vue-resource';
 import VueProgressBar from 'vue-progressbar';
+import VeeValidate from 'vee-validate';
+
+import VueEsc from 'vue-esc';
 import App from './App';
 import router from './router';
 
@@ -20,8 +23,9 @@ const options = {
   inverse: false,
 };
 
+Vue.use(VeeValidate);
 Vue.use(VueProgressBar, options);
-
+Vue.use(VueEsc);
 Vue.use(VueResource);
 
 Vue.config.productionTip = false;
