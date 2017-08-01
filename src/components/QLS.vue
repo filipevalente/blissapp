@@ -1,6 +1,7 @@
 <template>
   <div id="qls">
     <vue-progress-bar></vue-progress-bar>
+    <div v-esc="escape"></div>
     <input type="text" placeholder="Search" class="input-text" ref='search'/>
       <ul id="question-list">
         <li v-for="item in questions">
@@ -8,10 +9,15 @@
         </li>
       </ul>
     <div class="extras">
-      <span class="show-more" v-on:click="showMore(10)">Show more</span><span id="share-button"><span class="underline">Share</span><span v-html="shareButton"></span></span>
+      <span class="show-more" v-on:click="showMore(10)">Show more</span><span id="share-button"><span class="underline" v-on:click="shareScreen()">Share</span><span v-html="shareButton" v-on:click="shareScreen()"></span></span>
+      <div class="overlay" v-on:click="hideOverlay()"></div>
       <div class="popup-box">
         <span class="underline btn" v-on:click="shareScreen()" v-bind:data-clipboard-text="shareLink">Copy to Clipboard</span>
         <span class="underline btn" v-on:click="sendToEmail()" v-bind:data-clipboard-text="shareLink">Send to email</span>
+        <div class="input-email-wrapper">
+          <input v-validate="'required|email'" type="text" name="email" placeholder="Enter destination email" class="email-input"/> <i class="fa fa-paper-plane send-email-button" v-on:click="sendLinkToEmail()" aria-hidden="true"></i>
+        </div>
+        <span v-show="errors.has('email')" class="error-message">{{ errors.first('email') }}</span>
       </div>
     </div>
   </div>
@@ -71,15 +77,15 @@ export default {
       this.showMore(showMoreLimit);
     }
     $('input.input-text').keyup(() => {
-      this.$Progress.finish();
+      this.$Progress.start();
       this.filter = $('input.input-text').val();
       this.filterQuestions();
+      this.$Progress.finish();
     });
     this.$Progress.finish();
   },
   methods: {
     fetchQuestions: function fetchQuestions() {
-      this.$Progress.start();
       this.$http.get(`https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?${this.queryString}`)
         .then((response) => {
           const questionList = response.body;
@@ -96,7 +102,6 @@ export default {
       this.$Progress.finish();
     },
     filterQuestions: function filterQuestions() {
-      this.$Progress.start();
       this.$http.get(`https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?${this.queryString}`)
         .then((response) => {
           const questionList = response.body;
@@ -119,7 +124,6 @@ export default {
       this.$Progress.finish();
     },
     showMore: function showMore(limit) {
-      this.$Progress.start();
       const queryString = `https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?limit=10&offset=${this.alreadyFetched}&filter=${this.filter}`;
       this.$http.get(queryString)
         .then((response) => {
@@ -144,9 +148,31 @@ export default {
     },
     shareScreen: function shareScreen() {
       this.shareLink = `${location.protocol}//${location.host}${location.pathname}#/questions?limit=${this.limit}&offset=${this.offsetValue}&filter=${this.filter}&more=${this.newItems}`;
+      $('.overlay').addClass('active');
+      $('.popup-box').addClass('active');
     },
     openItem: function openItem(id) {
       this.$router.push(`/questions?question_id=${id}`);
+    },
+    sendToEmail: function sentToEmail() {
+      $('.popup-box').toggleClass('send-to-email');
+    },
+    sendLinkToEmail: function sendLinkToEmail() {
+      if (!this.errors.has('email') && !($('.email-input').val().length === 0)) {
+        const email = $('.email-input').val();
+        const shareLink = this.shareLink;
+        this.$http.post(`https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/share?destination_email=${email}&content_url=${shareLink}`);
+      }
+    },
+    hideOverlay: function hideOverlay() {
+      $('.overlay').removeClass('active');
+      $('.popup-box').removeClass('active');
+    },
+    escape() {
+      if ($('.overlay').hasClass('active')) {
+        $('.overlay').removeClass('active');
+        $('.popup-box').removeClass('active');
+      }
     },
   },
 };
@@ -211,18 +237,77 @@ export default {
     .underline {
       text-decoration: underline;
     }
-    .popup-box {
-      position: absolute;
+
+    .overlay {
+      position: fixed;
       display: none;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background-color: rgba(51, 51, 51, 0.5);
+      z-index: 2;
+      &.active {
+        display: block;
+      }
+    }
+    .popup-box {
+      position: fixed;
+      display: flex;
+      visibility: hidden;
+      z-index: 3;
       width: 300px;
       height: 75px;
       background: white;
-      -webkit-box-shadow: 1px 1px 2px 1px #cccccc;
-      -moz-box-shadow: 1px 1px 2px 1px #cccccc;
-      box-shadow: 1px 1px 2px 1px #cccccc;
-      top: 100%;
+      -webkit-box-shadow: 0px 0px 12px 0px #747474;
+      box-shadow: 0px 0px 12px 0px #747474;
+      top: 50%;
+      flex-direction: column;
+      padding-top: 15px;
+      align-items: center;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      -webkit-transition: height 0.75s;
+      -moz-transition: height 0.75s;
+      -ms-transition: height 0.75s;
+      -o-transition: height 0.75s;
+      transition: height 0.75s;
+      &.active {
+        visibility: visible;
+      }
+      &.send-to-email {
+        height: 125px;
+        -webkit-transition: height 0.75s;
+        -moz-transition: height 0.75s;
+        -ms-transition: height 0.75s;
+        -o-transition: height 0.75s;
+        transition: height 0.75s;
+        .input-email-wrapper {
+          display: initial;
+        }
+
+      }
     }
-
-
+    .input-email-wrapper {
+      padding: 5px 0;
+      width: 100%;
+      display: none;
+      color: #333;
+      .email-input {
+        margin-top: 25px;
+        width: 75%;
+        align-self: left;
+        margin-left: 15px;
+        border: 0;
+        border-bottom: 3px solid gray;
+      }
+    }
+    .error-message {
+      color: #ff3860;
+      font-size: 12px;
+    }
+    .send-email-button {
+      cursor: pointer;
+    }
 
 </style>
