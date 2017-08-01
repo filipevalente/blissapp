@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8">
     <title>blissapp</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css"/>
     <script src="https://use.fontawesome.com/7d25750f75.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.7.1/clipboard.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+
   </head>
   <body>
     <div id="app"></div>
@@ -12,5 +16,8 @@
       src="http://code.jquery.com/jquery-3.2.1.min.js"
       integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
       crossorigin="anonymous"></script>
+    <script>
+      new Clipboard('.btn');
+    </script>
   </body>
 </html>

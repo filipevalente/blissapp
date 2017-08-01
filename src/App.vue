@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <transition>
+    <transition name="fade" mode="out-in">
       <router-view></router-view>
     </transition>
   </div>
@@ -21,5 +21,18 @@ export default {
   margin-top: 60px;
   max-width: 1080px;
   margin: 0 auto;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition-property: opacity;
+  transition-duration: .75s;
+}
+
+.fade-enter-active {
+  transition-delay: .0.25s;
+}
+
+.fade-enter, .fade-leave-active {
+  opacity: 0
 }
 </style>

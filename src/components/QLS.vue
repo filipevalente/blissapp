@@ -1,11 +1,19 @@
 <template>
   <div id="qls">
-    <input type="text" placeholder="Search" class="input-text" :value="filter" ref='search'/>
+    <vue-progress-bar></vue-progress-bar>
+    <input type="text" placeholder="Search" class="input-text" ref='search'/>
       <ul id="question-list">
         <li v-for="item in questions">
-          {{item.question}}
+          <span v-on:click="openItem(item.id)">{{item.question}}</span>
         </li>
       </ul>
+    <div class="extras">
+      <span class="show-more" v-on:click="showMore(10)">Show more</span><span id="share-button"><span class="underline">Share</span><span v-html="shareButton"></span></span>
+      <div class="popup-box">
+        <span class="underline btn" v-on:click="shareScreen()" v-bind:data-clipboard-text="shareLink">Copy to Clipboard</span>
+        <span class="underline btn" v-on:click="sendToEmail()" v-bind:data-clipboard-text="shareLink">Send to email</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -14,55 +22,131 @@ export default {
   name: 'app',
   data() {
     return {
-      msg: 'Checking server status',
-      loadingIcon: '<i class="fa fa-spinner server-check-loader" aria-hidden="true"></i>',
-      status: '',
       questions: [],
+      limit: 10,
+      offsetValue: 0,
       filter: '',
+      queryString: '',
+      alreadyFetched: 10,
+      shareButton: ' <i class="fa fa-share-alt-square" aria-hidden="true"></i>',
+      shareLink: '',
+      newItems: 0,
     };
   },
   mounted() {
-    this.fetchQuestions();
-    let queryString = '';
-    console.log(this.$route);
+    this.$Progress.start();
+    this.alreadyFetched = this.questions.length;
+    let showMoreFlag = false;
+    let showMoreLimit = 0;
     if (!$.isEmptyObject(this.$route.query)) {
       for (const prop in this.$route.query) {
         if (this.$route.query.hasOwnProperty(prop)) {
-          queryString += `${prop}=${this.$route.query[prop]}&`;
+          this.queryString += `${prop}=${this.$route.query[prop]}&`;
+          if (prop === 'limit') {
+            this.limit = this.$route.query[prop];
+          }
+          if (prop === 'offset') {
+            this.offsetValue = this.$route.query[prop];
+          }
           if (prop === 'filter') {
             this.filter = this.$route.query[prop];
             if (this.$route.query[prop] === '') {
               this.$refs.search.focus();
+            } else {
+              $('input.input-text').val(this.$route.query[prop]);
+            }
+          }
+          if (prop === 'more') {
+            if (this.$route.query[prop]) {
+              showMoreFlag = true;
+              showMoreLimit = this.$route.query[prop];
             }
           }
         }
       }
-      console.log(queryString);
-
-      this.queryFetchQuestions(queryString);
     }
+    this.fetchQuestions();
+    this.filterQuestions();
+    if (showMoreFlag) {
+      this.showMore(showMoreLimit);
+    }
+    $('input.input-text').keyup(() => {
+      this.$Progress.finish();
+      this.filter = $('input.input-text').val();
+      this.filterQuestions();
+    });
+    this.$Progress.finish();
   },
   methods: {
     fetchQuestions: function fetchQuestions() {
-      this.$http.get('https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?limit=2&offset=1&filter=')
+      this.$Progress.start();
+      this.$http.get(`https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?${this.queryString}`)
         .then((response) => {
           const questionList = response.body;
-          for (let i = 0; i < questionList.length; i += 1) {
-            this.questions.push(questionList[i]);
+          const tempQuestionList = [{}];
+          for (let i = 0; i < this.limit && i < 10; i += 1) {
+            if (i >= this.offsetValue) {
+              tempQuestionList.push(questionList[i]);
+            }
           }
+          this.questions = tempQuestionList;
+        }).catch((e) => {
+          console.log(e);
         });
+      this.$Progress.finish();
     },
-    queryFetchQuestions: function queryFetchQuestions(queryString) {
-      console.log(queryString);
-      this.$http.get(queryString)
+    filterQuestions: function filterQuestions() {
+      this.$Progress.start();
+      this.$http.get(`https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?${this.queryString}`)
         .then((response) => {
           const questionList = response.body;
-          for (let i = 0; i < questionList.length; i += 1) {
-            this.questions.push(questionList[i]);
+          const tempQuestionList = [{}];
+          for (let i = 0; i < this.limit && i < 10; i += 1) {
+            if (i >= this.offsetValue) {
+              if (this.filter) {
+                if (questionList[i].question.toLowerCase().includes(this.filter.toLowerCase())) {
+                  tempQuestionList.push(questionList[i]);
+                }
+              }
+            }
+          }
+          if (this.filter) {
+            this.questions = tempQuestionList;
           }
         }).catch((e) => {
           console.log(e);
         });
+      this.$Progress.finish();
+    },
+    showMore: function showMore(limit) {
+      this.$Progress.start();
+      const queryString = `https://private-anon-17fff456a3-blissrecruitmentapi.apiary-mock.com/questions?limit=10&offset=${this.alreadyFetched}&filter=${this.filter}`;
+      this.$http.get(queryString)
+        .then((response) => {
+          const questionList = response.body;
+          for (let i = 0; (i < 10) && (i < limit); i += 1) {
+            this.alreadyFetched = this.questions.length - 1;
+            if (i >= this.alreadyFetched) {
+              if (i >= this.offsetValue) {
+                if (this.filter) {
+                  if (questionList[i].question.includes(this.filter)) {
+                    this.questions.push(questionList[i]);
+                    this.newItems += 1;
+                  }
+                }
+              }
+            }
+          }
+        }).catch((e) => {
+          console.log(e);
+        });
+      this.$Progress.finish();
+    },
+    shareScreen: function shareScreen() {
+      this.shareLink = `${location.protocol}//${location.host}${location.pathname}#/questions?limit=${this.limit}&offset=${this.offsetValue}&filter=${this.filter}&more=${this.newItems}`;
+    },
+    openItem: function openItem(id) {
+      this.$router.push(`/questions?question_id=${id}`);
     },
   },
 };
@@ -114,6 +198,31 @@ export default {
         }
       }
     }
+    .extras {
+      position: relative;
+      span {
+        &.show-more {
+          padding-right: 15px;
+          text-decoration: underline;
+        }
+        cursor: pointer;
+      }
+    }
+    .underline {
+      text-decoration: underline;
+    }
+    .popup-box {
+      position: absolute;
+      display: none;
+      width: 300px;
+      height: 75px;
+      background: white;
+      -webkit-box-shadow: 1px 1px 2px 1px #cccccc;
+      -moz-box-shadow: 1px 1px 2px 1px #cccccc;
+      box-shadow: 1px 1px 2px 1px #cccccc;
+      top: 100%;
+    }
+
 
 
 </style>
