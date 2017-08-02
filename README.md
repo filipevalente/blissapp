@@ -21,4 +21,6 @@ npm run build
 npm run build --report
 ```
 
+
+Note: Since this isn't a finished project, recommended to run only npm run dev.
 For detailed explanation on how things work, checkout the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
